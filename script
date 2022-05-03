@@ -1,0 +1,81 @@
+setwd("C:/Users/ligotn/OneDrive - UCL/Documents")
+
+library(dplyr)
+library(ggplot2)
+library(ggpubr) #ggarrange
+#variables 
+data1=read.csv2("data base LAI model.csv",dec=".")
+data1<-filter(data1,plant=="tomato")
+LAI.tomato <- data1$LAI.modif
+data1=read.csv2("data base LAI model.csv",dec=".")
+data1<-filter(data1,plant=="chilli")
+LAI.chilli <- data1$LAI.modif
+radiation<- 10.6
+RUE_tomato<- 4.435
+RUE_chilli<- 3.4
+k_tomato<- 0.5
+k_chilli<- 0.8
+days_tomato<-c(1:131)
+days_chilli<-c(1:231)
+#calculations without ash
+I_tomato <-1-exp(-k_tomato*LAI.tomato)
+I_chilli <-1-exp(-k_chilli*LAI.chilli)
+biomass_tomato <-radiation*I_tomato*RUE_tomato
+biomass_chilli <-radiation*I_chilli*RUE_chilli
+total_biomass_tomato<- sum(biomass_tomato)
+total_biomass_chilli<- sum(biomass_chilli)
+#functions
+diffzero_tomato<-LAI.tomato[LAI.tomato>0]
+biomasse_tomato<-function(day,ash_coverage,ash_percentage,partioning,days_newleaves,leaf_dying)
+{
+  LAI.tomato_ash<-c(LAI.tomato[1:(day-1)],(1-ash_coverage*ash_percentage)*LAI.tomato[day]+c(rep(0,days_newleaves+1),diffzero_tomato[1:(131-(day+days_newleaves))]))
+  LAI.tomato_ash[LAI.tomato_ash>=LAI.tomato]<-LAI.tomato[LAI.tomato_ash>=LAI.tomato]
+  I_tomato_ash<- 1-exp(-k_tomato*LAI.tomato_ash)
+  biomass_tomato_ash<-c((1-partioning)*biomass_tomato[1:(day-1)]+(partioning)*(biomass_tomato[1:(day-1)]*(1-(ash_coverage*leaf_dying))), #before eruption:tige + foliaire non couvert
+                        radiation*I_tomato_ash[day:131]*RUE_tomato) #after eruption
+  total_biomass_tomato_ash<- sum(biomass_tomato_ash)
+  yield_loss_tomato<-round(100*(total_biomass_tomato-total_biomass_tomato_ash)/total_biomass_tomato,2)
+  return(yield_loss_tomato)
+}
+biomasse_tomato(100,0.72,1,0.6,13,1)
+diffzero_chilli<-LAI.chilli[LAI.chilli>0]
+biomasse_chilli<-function(day,ash_coverage,ash_percentage,partioning,days_newleaves,leaf_dying)
+{
+  LAI.chilli_ash<-c(LAI.chilli[1:(day-1)],(1-ash_coverage*ash_percentage)*LAI.chilli[day]+c(rep(0,days_newleaves+1),diffzero_chilli[1:(231-(day+days_newleaves))]))
+  LAI.chilli_ash[LAI.chilli_ash>=LAI.chilli]<-LAI.chilli[LAI.chilli_ash>=LAI.chilli]
+  I_chilli_ash<- 1-exp(-k_chilli*LAI.chilli_ash)
+  biomass_chilli_ash<-c((1-partioning)*biomass_chilli[1:(day-1)]+(partioning)*(biomass_chilli[1:(day-1)]*(1-(ash_coverage*leaf_dying))), #before eruption:tige + foliaire non couvert
+                        radiation*I_chilli_ash[day:231]*RUE_chilli) #after eruption
+  total_biomass_chilli_ash<- sum(biomass_chilli_ash)
+  yield_loss_chilli<-round(100*(total_biomass_chilli-total_biomass_chilli_ash)/total_biomass_chilli,2)
+  return(yield_loss_chilli)
+}
+#tomato with some values of surface
+library(truncnorm)
+days<-c(32,97) 
+surface<-c(0.88,0.48,0.44,0.2,0.05,0.04,0.87,0.6,0.67,0.37,0.13,0.05) 
+#6 values for dry and 6 values for wet condition
+yield_loss_tomato<-c()
+result_median<-c()
+result_Q1<-c()
+result_Q3<-c()
+days_newleaves<-round(rtruncnorm(10000,0,30,13,5)) #n, mean,sd (10000,0,30,14,5)
+partioning<-round(rnorm(10000,0.6,0.1),3) #n, borne inf, borne sup, mean,sd
+ash_percentage<-round(rnorm(10000,1,0.4),3) #n, borne inf, borne sup, mean,sd
+leaf_dying<-round(rnorm(10000,1,0.4),3) #n, borne inf, borne sup, mean,sd
+for (k in 1:length(days)){
+  for (j in 1:length(surface)){
+    vector<-c()
+    for (i in 1:length(days_newleaves)){
+      temp <-biomasse_tomato(days[k],surface[j],ash_percentage[i],partioning[i],days_newleaves[i],leaf_dying[i])
+      vector<-c(vector,temp)
+    }
+    temp_median<-unname(quantile(vector,probs=0.5))
+    result_median<-c(result_median,temp_median)
+    temp_Q3<-unname(quantile(vector,probs=0.75))
+    result_Q3<-c(result_Q3,temp_Q3)
+    temp_Q1<-unname(quantile(vector,probs=0.25))
+    result_Q1<-c(result_Q1,temp_Q1)
+  }
+  yield_loss_tomato<-data.frame(cbind(median=result_median,Q1=result_Q1,Q3=result_Q3))
+}
