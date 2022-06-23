@@ -2,7 +2,7 @@ library(dplyr)
 library(ggplot2)
 library(ggpubr) #ggarrange
 
-#inputs (LAI,RUE,k,Q,growth period) to the tomato and chilli pepper model 
+#inputs (LAI,RUE,k,Q,growth period lenght) to the tomato and chilli pepper model 
 for (1=1){
 data1=read.csv2("data base LAI model.csv",dec=".") #file containing the LAI model for tomato and chilli pepper
 data1<-filter(data1,plant=="tomato")
