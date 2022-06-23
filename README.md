@@ -6,5 +6,5 @@ The script is divided into 6 parts:
 - assignment of model inputs 
 - biomass calculation for tomato and chilli pepper without ash event
 - yield loss models for tomato and chilli pepper in the event of an ash fall
-- stochastic simulations to evaluate the error on the model outputs when the four parameters vary
+- stochastic simulations to evaluate the error on the model outputs when the parameters vary for four ash fall scenarioss (early growth period and dry conditions, early growth period and wet conditions, late growth period and dry conditions and late growth period and wet conditions)
 - model sensibility analyses to the four parameters
