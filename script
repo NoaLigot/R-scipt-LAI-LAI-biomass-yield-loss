@@ -1,10 +1,10 @@
-setwd("C:/Users/ligotn/OneDrive - UCL/Documents")
-
 library(dplyr)
 library(ggplot2)
 library(ggpubr) #ggarrange
-#variables 
-data1=read.csv2("data base LAI model.csv",dec=".")
+
+#inputs (LAI,RUE,k,Q,growth period) to the tomato and chilli pepper model 
+for (1=1){
+data1=read.csv2("data base LAI model.csv",dec=".") #file containing the LAI model for tomato and chilli pepper
 data1<-filter(data1,plant=="tomato")
 LAI.tomato <- data1$LAI.modif
 data1=read.csv2("data base LAI model.csv",dec=".")
@@ -17,65 +17,187 @@ k_tomato<- 0.5
 k_chilli<- 0.8
 days_tomato<-c(1:131)
 days_chilli<-c(1:231)
-#calculations without ash
+}
+#biomass calculations for tomato and chilli without ash
+for (1=1){
 I_tomato <-1-exp(-k_tomato*LAI.tomato)
 I_chilli <-1-exp(-k_chilli*LAI.chilli)
 biomass_tomato <-radiation*I_tomato*RUE_tomato
 biomass_chilli <-radiation*I_chilli*RUE_chilli
 total_biomass_tomato<- sum(biomass_tomato)
 total_biomass_chilli<- sum(biomass_chilli)
-#functions
-diffzero_tomato<-LAI.tomato[LAI.tomato>0]
-biomasse_tomato<-function(day,ash_coverage,ash_percentage,partioning,days_newleaves,leaf_dying)
+}
+#tomato model 
+for (1=1){
+biomasse_tomato<-function(day,ash_coverage,ash_percentage,partioning,days_newleaves,leaf_dying) #6 parameters to the function
 {
-  LAI.tomato_ash<-c(LAI.tomato[1:(day-1)],(1-ash_coverage*ash_percentage)*LAI.tomato[day]+c(rep(0,days_newleaves+1),diffzero_tomato[1:(131-(day+days_newleaves))]))
-  LAI.tomato_ash[LAI.tomato_ash>=LAI.tomato]<-LAI.tomato[LAI.tomato_ash>=LAI.tomato]
-  I_tomato_ash<- 1-exp(-k_tomato*LAI.tomato_ash)
-  biomass_tomato_ash<-c((1-partioning)*biomass_tomato[1:(day-1)]+(partioning)*(biomass_tomato[1:(day-1)]*(1-(ash_coverage*leaf_dying))), #before eruption:tige + foliaire non couvert
-                        radiation*I_tomato_ash[day:131]*RUE_tomato) #after eruption
+  LAI_fall<-(1-ash_coverage*ash_percentage)*LAI.tomato[day] #calculation of the LAI drop due to ash coverage
+  LAI_fall[LAI_fall<0]<-0 #avoid negative values of LAI
+  j<-match(min(abs(LAI.tomato[1:80]-LAI_fall)),abs(LAI.tomato[1:80]-LAI_fall))[1] #day of the growth period where LAI equals LAI fall 
+  LAI.tomato_ash<-c(LAI.tomato[1:(day-1)],
+                    (1-ash_coverage*ash_percentage)*LAI.tomato[day]+c(rep(0,days_newleaves+1)),
+                    LAI.tomato[j:(j+length(LAI.tomato)-day-1-days_newleaves)]) #LAI before ash event, drop in LAI + eventual physiological stress, LAI increase with the same slope than it had on the day LAI equals LAI fall  
+  LAI.tomato_ash[LAI.tomato_ash>=LAI.tomato]<-LAI.tomato[LAI.tomato_ash>=LAI.tomato] #to avoid exceeding the LAI value with ash event
+  I_tomato_ash<- 1-exp(-k_tomato*LAI.tomato_ash) #calculation of I
+  biomass_tomato_ash<-c((1-partioning)*biomass_tomato[1:(day-1)]+(partioning)*(biomass_tomato[1:(day-1)]*(1-(ash_coverage*leaf_dying))), #biomass calculation before ash event: without the ash covered leaf biomass
+                        radiation*I_tomato_ash[day:131]*RUE_tomato) #biomass calculation after ash event
   total_biomass_tomato_ash<- sum(biomass_tomato_ash)
   yield_loss_tomato<-round(100*(total_biomass_tomato-total_biomass_tomato_ash)/total_biomass_tomato,2)
   return(yield_loss_tomato)
 }
-biomasse_tomato(100,0.72,1,0.6,13,1)
-diffzero_chilli<-LAI.chilli[LAI.chilli>0]
-biomasse_chilli<-function(day,ash_coverage,ash_percentage,partioning,days_newleaves,leaf_dying)
-{
-  LAI.chilli_ash<-c(LAI.chilli[1:(day-1)],(1-ash_coverage*ash_percentage)*LAI.chilli[day]+c(rep(0,days_newleaves+1),diffzero_chilli[1:(231-(day+days_newleaves))]))
-  LAI.chilli_ash[LAI.chilli_ash>=LAI.chilli]<-LAI.chilli[LAI.chilli_ash>=LAI.chilli]
-  I_chilli_ash<- 1-exp(-k_chilli*LAI.chilli_ash)
-  biomass_chilli_ash<-c((1-partioning)*biomass_chilli[1:(day-1)]+(partioning)*(biomass_chilli[1:(day-1)]*(1-(ash_coverage*leaf_dying))), #before eruption:tige + foliaire non couvert
-                        radiation*I_chilli_ash[day:231]*RUE_chilli) #after eruption
-  total_biomass_chilli_ash<- sum(biomass_chilli_ash)
-  yield_loss_chilli<-round(100*(total_biomass_chilli-total_biomass_chilli_ash)/total_biomass_chilli,2)
-  return(yield_loss_chilli)
 }
-#tomato with some values of surface
+#chilli pepper model
+for (1=1){
+  biomasse_chilli<-function(day,ash_coverage,ash_percentage,partioning,days_newleaves,leaf_dying)
+  {
+    LAI_fall<-(1-ash_coverage*ash_percentage)*LAI.chilli[day]
+    LAI_fall[LAI_fall<0]<-0
+    j<-match(min(abs(LAI.chilli[1:137]-LAI_fall)),abs(LAI.chilli[1:137]-LAI_fall))[1]
+    LAI.chilli_ash<-c(LAI.chilli[1:(day-1)],
+                      (1-ash_coverage*ash_percentage)*LAI.chilli[day]+c(rep(0,days_newleaves+1)),
+                      LAI.chilli[j:(j+length(LAI.chilli)-day-1-days_newleaves)])                                                                    
+    LAI.chilli_ash[LAI.chilli_ash>=LAI.chilli]<-LAI.chilli[LAI.chilli_ash>=LAI.chilli]
+    I_chilli_ash<- 1-exp(-k_chilli*LAI.chilli_ash)
+    biomass_chilli_ash<-c((1-partioning)*biomass_chilli[1:(day-1)]+(partioning)*(biomass_chilli[1:(day-1)]*(1-(ash_coverage*leaf_dying))), 
+                          radiation*I_chilli_ash[day:231]*RUE_chilli) 
+    total_biomass_chilli_ash<- sum(biomass_chilli_ash)
+    yield_loss_chilli<-round(100*(total_biomass_chilli-total_biomass_chilli_ash)/total_biomass_chilli,2)
+    return(yield_loss_chilli)
+}
+}
 library(truncnorm)
-days<-c(32,97) 
-surface<-c(0.88,0.48,0.44,0.2,0.05,0.04,0.87,0.6,0.67,0.37,0.13,0.05) 
-#6 values for dry and 6 values for wet condition
+#stochastique simulation for all grain sizes for tomato and chilli after 25 and 75% of the growth period
+for (1=1){
+#tomato
+model_T_D=read.csv("df_expo_T_D.csv",dec=".") #model of VLSA for tomato in wet conditions
+model_T_ND=read.csv("df_expo_T_ND.csv",dec=".") #model of VLSA for tomato in dry conditions
+model<-c(model_T_D$prediction,model_T_ND$prediction) #tomato
+days<-c(32,97) #tomato
+surface<-round(model/100,2)
 yield_loss_tomato<-c()
 result_median<-c()
 result_Q1<-c()
 result_Q3<-c()
-days_newleaves<-round(rtruncnorm(10000,0,30,13,5)) #n, mean,sd (10000,0,30,14,5)
-partioning<-round(rnorm(10000,0.6,0.1),3) #n, borne inf, borne sup, mean,sd
-ash_percentage<-round(rnorm(10000,1,0.4),3) #n, borne inf, borne sup, mean,sd
-leaf_dying<-round(rnorm(10000,1,0.4),3) #n, borne inf, borne sup, mean,sd
-for (k in 1:length(days)){
-  for (j in 1:length(surface)){
+days_newleaves<-round(rtruncnorm(10000,0,30,0,10)) #n, lower limit, upper limit, mean,sd 
+partioning<-round(rnorm(10000,0.6,0.1),3) #n, mean,sd 
+ash_percentage<-round(rtruncnorm(10000,0,1,1,0.4),3) #n, lower limit, upper limit, mean,sd, problem if >1
+leaf_dying<-round(rnorm(10000,1,0.4),3) #n, mean,sd 
+for (k in 1:length(days)){ #loop on the growth period
+  for (j in 1:length(surface)){ #loop on the VLSA (so on the grainsize)
     vector<-c()
     for (i in 1:length(days_newleaves)){
-      temp <-biomasse_tomato(days[k],surface[j],ash_percentage[i],partioning[i],days_newleaves[i],leaf_dying[i])
+      temp <-biomasse_tomato(days[k],surface[j],ash_percentage[i],partioning[i],days_newleaves[i],leaf_dying[i]) 
       vector<-c(vector,temp)
     }
-    temp_median<-unname(quantile(vector,probs=0.5))
+    temp_median<-unname(quantile(vector,probs=0.5)) #median value
     result_median<-c(result_median,temp_median)
-    temp_Q3<-unname(quantile(vector,probs=0.75))
+    temp_Q3<-unname(quantile(vector,probs=0.75)) #third quartile
     result_Q3<-c(result_Q3,temp_Q3)
-    temp_Q1<-unname(quantile(vector,probs=0.25))
+    temp_Q1<-unname(quantile(vector,probs=0.25)) #first quartile
     result_Q1<-c(result_Q1,temp_Q1)
   }
   yield_loss_tomato<-data.frame(cbind(median=result_median,Q1=result_Q1,Q3=result_Q3))
 }
+#chilli pepper
+model_C_D=read.csv("df_expo_C_D.csv",dec=".") #model of VLSA for chilli pepper in wet conditions
+model_C_ND=read.csv("df_expo_C_ND.csv",dec=".") #model of VLSA for chilli pepper in dry conditions
+model<-c(model_C_D$prediction,model_C_ND$prediction) 
+days<-c(57,172) 
+surface<-round(model/100,2)
+yield_loss_chilli<-c() 
+result_Q1<-c()
+result_Q3<-c()
+days_newleaves<-round(rtruncnorm(10000,0,30,0,10)) #n, lower limit, upper limit, mean,sd 
+partioning<-round(rnorm(10000,0.6,0.1),3) #n, mean,sd 
+ash_percentage<-round(rtruncnorm(10000,0,1,1,0.4),3) #n, lower limit, upper limit, mean,sd, problem if >1
+leaf_dying<-round(rnorm(10000,1,0.4),3) #n, mean,sd 
+for (k in 1:length(days)){ #loop on the growth period
+  for (j in 1:length(surface)){ #loop on the VLSA (so on the grainsize)
+    vector<-c()
+    for (i in 1:length(days_newleaves)){
+      temp <-biomasse_chilli(days[k],surface[j],ash_percentage[i],partioning[i],days_newleaves[i],leaf_dying[i]) #chilli
+      vector<-c(vector,temp)
+    }
+    temp_median<-unname(quantile(vector,probs=0.5)) #median value
+    result_median<-c(result_median,temp_median)
+    temp_Q3<-unname(quantile(vector,probs=0.75)) #third quartile
+    result_Q3<-c(result_Q3,temp_Q3)
+    temp_Q1<-unname(quantile(vector,probs=0.25)) #first quartile
+    result_Q1<-c(result_Q1,temp_Q1)
+  }
+  yield_loss_chilli<-data.frame(cbind(median=result_median,Q1=result_Q1,Q3=result_Q3)) 
+}
+}
+
+#tomato sensibility analyses
+for (1=1){
+#parameters: 
+#i day number between eruption and plant transplanting
+#ash_coverage: leaf surface area covered with ash (%)
+#ash_percentage: % of the leaf surface area covered with ash that is really covered
+#partioning: proportion of leaf biomass in canopy biomass
+#days_newleaves: number of days to produce new leaves
+
+#sensitivity analysis 
+ash_percentage<-c(1,0.99,0.95,0.9,0.5,0.1) #[0,1]
+ash_percentage_perc<-c(0,-0.01,-0.05,-0.1,-0.5,-0.9)
+partioning<-0.6*(1+c(0,1,5,10,50,-1,-5,-10,-50,-90)/100)#[0,1]
+partioning_perc<-c(0,0.01,0.05,0.1,0.5,-0.01,-0.05,-0.1,-0.5,-0.9)
+days_newleaves<-c(0,1,2,5,10,20,30)
+days_newleaves_perc<-c(0,1,2,5,10,20,30)
+leaf_dying<-c(1,0.99,0.95,0.9,0.5,0.1) #[0,1]
+leaf_dying_perc<-c(0,-0.01,-0.05,-0.1,-0.5,-0.9)
+#ash percentage
+sensitivity_ash_percentage<-c()
+for (i in 1:length(ash_percentage)){
+  aa<-biomasse_tomato(32,0.88,ash_percentage[i],0.6,0,1)
+  sensitivity_ash_percentage<-c(sensitivity_ash_percentage,aa)
+}
+difference_ash_percentage<-c()
+for (i in 1:length(sensitivity_ash_percentage)){
+  dd<-round(sensitivity_ash_percentage[1]-sensitivity_ash_percentage[i],2)
+  difference_ash_percentage<-c(difference_ash_percentage,dd)
+}
+#partioning
+sensitivity_partioning<-c()
+for (i in 1:length(partioning)){
+  bb<-biomasse_tomato(32,0.88,1,partioning[i],0,1)
+  sensitivity_partioning<-c(sensitivity_partioning,bb)
+}
+difference_partioning<-c()
+for (i in 1:length(sensitivity_partioning)){
+  ee<-round(sensitivity_partioning[1]-sensitivity_partioning[i],2)
+  difference_partioning<-c(difference_partioning,ee)
+}
+#days newleaves
+sensitivity_days_newleaves<-c()
+for (i in 1:length(days_newleaves)){
+  cc<-biomasse_tomato(32,0.88,1,0.6,days_newleaves[i],1)
+  sensitivity_days_newleaves<-c(sensitivity_days_newleaves,cc)
+}
+difference_days_newleaves<-c()
+for (i in 1:length(sensitivity_days_newleaves)){
+  ff<-round(sensitivity_days_newleaves[1]-sensitivity_days_newleaves[i],2)
+  difference_days_newleaves<-c(difference_days_newleaves,ff)
+}
+#leaf dying
+sensitivity_leaf_dying<-c()
+for (i in 1:length(leaf_dying)){
+  cc<-biomasse_tomato(32,0.88,1,0.6,0,leaf_dying[i])
+  sensitivity_leaf_dying<-c(sensitivity_leaf_dying,cc)
+}
+difference_leaf_dying<-c()
+for (i in 1:length(sensitivity_leaf_dying)){
+  ff<-round(sensitivity_leaf_dying[1]-sensitivity_leaf_dying[i],2)
+  difference_leaf_dying<-c(difference_leaf_dying,ff)
+}
+#bdd
+df_ash_percentage<-data.frame(percentage_value=ash_percentage_perc,ash_percentage_value=ash_percentage,yield_loss=sensitivity_ash_percentage,difference=difference_ash_percentage)
+df_partioning<-data.frame(percentage_value=partioning_perc,partioning_value=partioning,yield_loss=sensitivity_partioning,difference=difference_partioning)
+df_days_newleaves<-data.frame(percentage_value=days_newleaves_perc,days_newleaves_value=days_newleaves,yield_loss=sensitivity_days_newleaves,difference=difference_days_newleaves)
+df_leaf_dying<-data.frame(percentage_value=leaf_dying_perc,leaf_dying_value=leaf_dying,yield_loss=sensitivity_leaf_dying,difference=difference_leaf_dying)
+#save tables
+write.csv(df_ash_percentage,"df_ash_percentage.csv")
+write.csv(df_partioning,"df_partioning.csv")
+write.csv(df_days_newleaves,"df_days_newleaves.csv")
+write.csv(df_leaf_dying,"df_leaf_dying.csv")
